@@ -1,3 +1,1 @@
-# Data Structures and Algorithms
-
-This repo contains materials for learning and utilizing DS+A, as well as various projects related to this cause.
+"# data-structs-algos" 
