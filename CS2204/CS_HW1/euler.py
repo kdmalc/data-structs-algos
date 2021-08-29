@@ -10,7 +10,6 @@ def series(n_terms=1000):
     """Estimate e with series: 1/1 + 1/1 + 1/(1*2) + 1/(1*2*3) + ..."""
     # 1 divided by the product of 1 to idx+1, all the way up to n_terms
     e = sum([1/prod(list(range(1, idx+1))) for idx in range(n_terms)])
-
     return e
 
 
