@@ -24,7 +24,7 @@ def squares_comprehension(n):
 
 # A more scientific computing approach:
 def squares_numpy(n):
-    return np.arange(n) ** 2
+    return np.arange(n, dtype='int64') ** 2
 
 
 if __name__ == "__main__":
