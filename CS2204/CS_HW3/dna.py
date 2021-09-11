@@ -114,3 +114,55 @@ if __name__ == "__main__":
     # This part of your code and the printed outputs below will not be graded
     print(Codon("act") in gene)
     print(gene.gc_content())
+
+    # My additions
+    print("Codon Testing")
+    # Test Codon init and str
+    try:
+        print(Codon("ac1t"))
+        print("------- 0Error passed through -------")
+    except AssertionError:
+        print("Successful error catch")
+
+    try:
+        print(Codon("ac "))
+        print("------- 1Error passed through -------")
+    except AssertionError:
+        print("Successful error catch")
+
+    # Test Codon eq
+    try:
+        print(Codon("act") == Codon("ACT"))
+        print(Codon("ac ") == Codon("ACT"))
+        print("------- 2Error passed through -------")
+    except AssertionError:
+        print("Succssful error catch")
+
+    try:
+        print(Codon("aCt") == Codon("aTT"))
+    except AssertionError:
+        print("Succssful error catch")
+
+    print("Gene Testing:")
+    # test Gene init and str
+    try:
+        print(Gene("aCt"))
+        print(Gene("aCt"))
+        print(Gene("actuttta"))
+        print("------- 3Error passed through -------")
+    except AssertionError:
+        print("Succssful error catch")
+    # test Gene transcribe
+    try:
+        print(Gene("aCtaTTTCCTCTCTATATTAAAGGTGTGTG").transcribe())
+        print(Gene("aCtaTTTCCTCTCTATATTA123AGGTGTGTG").transcribe())
+        print("------- 4Error passed through -------")
+    except AssertionError:
+        print("Succssful error catch")
+
+    try:
+        print(Gene("aCtaTTTCCTCT ATATTAAAGGTGTGTG").transcribe())
+        print("------- 5Error passed through -------")
+    except AssertionError:
+        print("Succssful error catch")
+    print("All tests complete")
