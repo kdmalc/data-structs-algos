@@ -12,24 +12,18 @@ class Codon:
     """Amino-acid encoding with three nucleotides"""
 
     def __init__(self, bases):
-        self.bases = bases.upper()
-        # Something about raising exceptions if you get bad input
-        """
-        try:
-            assert len(bases) == 3
-            assert type(bases) ==  str
-            acceptable_bases = ['A', 'C', 'G', 'T']
-            assert bases[0].upper() in acceptable_bases
+        assert len(bases) == 3
+        assert type(bases) is str
+        for base in bases:
+            assert base.upper() in ['A', 'C', 'G', 'T']
 
-        except TypeError:
-            print("Error: bases is NoneType")
-        """
+        self.bases = bases.upper()
 
     def __str__(self):
         """Convert to string enclosed in square brackets.
         E.g. [GCT]
         """
-        return self.bases
+        return f"[{self.bases}]"
 
     def __eq__(self, other):
         """Compare if two Codon objects are equal (same sequence of bases)"""
@@ -40,7 +34,14 @@ class Codon:
 
         E.g. <GCU>
         """
-        return f"<{self.bases}>"
+
+        trans_bases = ["U" if base == "T" else base for base in self.bases]
+        for idx in range(len(trans_bases)):
+            bases_hold = "".join(str(ele) for ele in trans_bases)
+        if (len(bases_hold) is None) or (len(bases_hold) == 0):
+            return ""
+        else:
+            return f"<{bases_hold}>"
 
 
 class Gene:
@@ -51,11 +52,12 @@ class Gene:
         while len(self.seq) % 3 > 0:
             self.seq = self.seq[0:-1]
 
-        third_length = floor(len(self.seq)/3)
-        seq_hold = [0] * third_length
-        for idx in range(third_length):
-            seq_hold[idx] = (str(self.seq[3*idx]) + str(self.seq[3*idx+1])
-                             + str(self.seq[3*idx+2]))
+        seq_hold = []
+        for idx in range(floor(len(self.seq) / 3)):
+            codon_str = ((self.seq[3*idx]) + (self.seq[3*idx + 1])
+                         + (self.seq[3*idx + 2]))
+            seq_hold.append(Codon(codon_str).bases)
+
         self.seq = seq_hold
 
     def __str__(self):
@@ -63,29 +65,36 @@ class Gene:
 
         E.g. [GCT][GGC]...
         """
-        # Double check that this string doesn't start/end with "[[...]]"
-        # Return this as a string...
-        return [f"[{str(ele)}]" for ele in self.seq]
+
+        seq_hold = "".join(f"[{str(ele)}]" for ele in self.seq)
+        return seq_hold
 
     def transcribe(self):
         """Return a string of transcribed codons (in angle brackets).
 
         E.g. <GCU><GGC>...
         """
-        # Double check that this string doesn't start/end with "[[...]]"
-        # Return this as a string...
-        return [f"<{str(ele)}>" for ele in self.seq]
+        trans_codons = [Codon(codon).transcribe() for codon in self.seq]
+        codons_hold = ""
+        for idx in range(len(trans_codons)):
+            codons_hold = "".join(str(ele) for ele in trans_codons)
+        if (len(codons_hold) is None) or (len(codons_hold) == 0):
+            return ""
+        else:
+            return f"{codons_hold}"
 
     def __contains__(self, codon):
         """Check if the gene seuence contains the given codon"""
         return (True if sum([1 for ele in self.seq
-                             if str(codon).upper() == ele]) > 0 else False)
+                             if codon.bases.upper() == ele]) > 0 else False)
 
     def gc_content(self):
         """Return the fraction of G and C bases relative to all bases"""
-        # This is not good enough, as a codon could be just G/Cs
-        return ((sum([1 for codon in self.seq if "GC" in codon.upper()]) > 0)
-                / len(self.seq))
+
+        my_c = sum([codon.upper().count('C') for codon in self.seq])
+        my_g = sum([codon.upper().count('G') for codon in self.seq])
+
+        return (my_c + my_g)/(3*len(self.seq))
 
 
 if __name__ == "__main__":
