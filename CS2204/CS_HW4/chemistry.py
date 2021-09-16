@@ -7,7 +7,7 @@ __author__ = "malcolkd"
 from collections import namedtuple
 
 # TODO: define the Element datatype (using namedtuple)
-# Element = ...
+Element = namedtuple("Element", ["number", "symbol", "name", "weight"])
 
 elements = []
 
@@ -19,23 +19,33 @@ def load_elements(filename):
     with open(filename) as db:
         for line in db:
             # line is a single string of from the file
-            pass
+            ele_params = line.split()
+            elements.append(Element(int(ele_params[0]), ele_params[1],
+                                    ele_params[2], float(ele_params[3])))
 
 
-def element_by_number(number):
+def element_by_number(num):
     """Return the chemical element of a given atomic number
 
     Return None if element is not found.
     """
-    pass
+    for elem in elements:
+        if elem.number == num:
+            return elem
+
+    return None
 
 
-def element_by_symbol(symbol):
+def element_by_symbol(sym):
     """Return the chemical element of a given symbol
 
     Return None if element is not found.
     """
-    pass
+    for elem in elements:
+        if elem.symbol == sym:
+            return elem
+
+    return None
 
 
 def element_by_name(name):
@@ -44,17 +54,68 @@ def element_by_name(name):
     Name matching is case-insensitive.
     Return None if element is not found.
     """
-    pass
+    for elem in elements:
+        if elem.name.upper() == name.upper():
+            return elem
+
+    return None
 
 
-def compound_elements(formula):
+def get_full_number(idx, formula):
+    num_str = ""
+    while formula[idx].isdigit():
+        num_str = num_str + formula[idx]
+        idx += 1
+    return int(num_str)
+
+
+def compound_elements(formula, count_instances=False):
     """Return the list of elements in a given compound formula."""
-    pass
+    if count_instances is False:
+        form = ''.join([letter for letter in formula if not letter.isdigit()])
+        # Assuming form will be: (CAP lower) (CAP) (CAP lower) (CAP)
+        my_elems = []
+        for char in form:
+            if char.isupper():
+                my_elems.append(char)
+            elif char.islower():
+                my_elems[-1] = str(my_elems[-1]) + str(char)
+            else:
+                raise "Unexpected type"
+        # Assuming that these are indeed the elements
+        elem_set = set()
+        for elem in my_elems:
+            elem_set.add(element_by_symbol(elem))
+        return list(elem_set)
+    else:
+        print("Weight Run")
+        my_elems = []
+        for idx, char in enumerate(formula):
+            char_previous = formula[idx-1] if idx > 0 else ""
+            if char.isupper():
+                my_elems.append(char)
+            elif char.islower():
+                my_elems[-1] = str(my_elems[-1]) + str(char)
+            elif char.isdigit():
+                if char_previous.isdigit():
+                    break
+                else:
+                    my_num = get_full_number(idx, formula)
+                    for _ in range(my_num):
+                        my_elems.append(my_elems[-1])
+            else:
+                raise "Unexpected type"
+        elem_list = [element_by_symbol(ele) for ele in my_elems]
+        return elem_list
 
 
 def compound_weight(formula):
     """Return the total weight of a given compound formula."""
-    pass
+    elem_list = compound_elements(formula, count_instances=True)
+    print(elem_list)
+    weight = sum([ele.weight for ele in elem_list])
+    print(weight)
+    return weight
 
 
 if __name__ == "__main__":
