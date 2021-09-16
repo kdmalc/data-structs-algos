@@ -66,7 +66,12 @@ def get_full_number(idx, formula):
     while formula[idx].isdigit():
         num_str = num_str + formula[idx]
         idx += 1
-    return int(num_str)
+        if idx == len(formula):
+            break
+    if num_str:
+        return int(num_str)
+    else:
+        return 0
 
 
 def compound_elements(formula, count_instances=False):
@@ -88,7 +93,6 @@ def compound_elements(formula, count_instances=False):
             elem_set.add(element_by_symbol(elem))
         return list(elem_set)
     else:
-        print("Weight Run")
         my_elems = []
         for idx, char in enumerate(formula):
             char_previous = formula[idx-1] if idx > 0 else ""
@@ -98,10 +102,10 @@ def compound_elements(formula, count_instances=False):
                 my_elems[-1] = str(my_elems[-1]) + str(char)
             elif char.isdigit():
                 if char_previous.isdigit():
-                    break
+                    pass
                 else:
                     my_num = get_full_number(idx, formula)
-                    for _ in range(my_num):
+                    for _ in range(my_num-1):
                         my_elems.append(my_elems[-1])
             else:
                 raise "Unexpected type"
@@ -112,9 +116,7 @@ def compound_elements(formula, count_instances=False):
 def compound_weight(formula):
     """Return the total weight of a given compound formula."""
     elem_list = compound_elements(formula, count_instances=True)
-    print(elem_list)
     weight = sum([ele.weight for ele in elem_list])
-    print(weight)
     return weight
 
 
