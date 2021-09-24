@@ -37,7 +37,9 @@ Transaction = namedtuple("Transaction", ["time", "amount", "company", "phone"])
 
 def foreign_transactions(transactions):
     """Return a list of foreign transactions."""
-    pass
+    # E.g. phone number doesn't start with +1
+    return [trans for trans in transactions
+            if not trans.phone[1] == "1"]
 
 
 def late_night_transactions(transactions):
@@ -83,19 +85,21 @@ def load_transactions(filename):
     Return a list of Transaction objects
     """
     my_transactions = []
-    with open("transactions_test.txt") as f:
-        data = f.read()
-        my_pattern = re.compile(r"|([^|]*)|")
-        # ^ This is super broken right now
-        for line in data:
-            generic_list = my_pattern.findall(line)
-            print(generic_list)
+    with open("transactions_test.txt", 'r') as f:
+        split_pattern = re.compile(r"\|")
+        time_pattern = re.compile(r"\d{2}:\d{2}:\d{2}")
+        phone_pattern = re.compile(r"\+\d{1}-\d{3}-\d{3}-\d{4}")
+        for line in f.readlines():
+            my_list = split_pattern.split(line)
 
-            time_pattern = re.compile(r"\d{2}:\d{2}:\d{2}")
-            my_time = time_pattern.findall(line)
-            my_amount = 0  # FIX THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            my_company = 0  # FIX THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            my_phone = 0  # FIX THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            my_time = time_pattern.findall(line)[0]
+            my_amount = float("".join([dig for dig in my_list[1]
+                                       if (dig.isdigit() or dig == ".")]))
+            my_company = my_list[2].strip()
+            try:
+                my_phone = phone_pattern.findall(line)[0]
+            except IndexError:
+                print(phone_pattern.findall(line))
 
             my_transactions.append(Transaction(
                 my_time, my_amount, my_company, my_phone))
@@ -103,9 +107,9 @@ def load_transactions(filename):
 
 
 if __name__ == "__main__":
-    transactions = load_transactions("transactions.txt")
+    transactions = load_transactions("transactions_test.txt")
 
-    # print(foreign_transactions(transactions))
+    print(foreign_transactions(transactions))
     # print(late_night_transactions(transactions))
     # print(highest_transactions(transactions))
     # print(median_expense(transactions))
