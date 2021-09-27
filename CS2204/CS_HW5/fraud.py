@@ -47,13 +47,13 @@ def foreign_transactions(transactions):
 def late_night_transactions(transactions):
     """Return a list of transactions between 11:00 PM - 5:00 AM."""
     return [trans for trans in transactions
-            if trans.time[0:1] > "23" or trans.time[0:1] < "05"]
+            if trans.time.split()[1][0:2] >= "23"
+            or trans.time.split()[1][0:2] < "05"]
 
 
 def highest_transactions(transactions, n_highest=10):
     """Return a list of the n highest transactions."""
     high_trans = sorted(transactions, key=lambda x: x.amount, reverse=True)
-    # high_trans.sort()
     high_n_trans = high_trans[0:n_highest]
     return high_n_trans
 
@@ -70,8 +70,8 @@ def significant_transactions(transactions, n_trailing=10):
     A transaction is significant if the amount is greater than or equal to
     five times of the median spending for a trailing number of transactions
     """
+    sig_trans = []
     for idx, trans in enumerate(transactions):
-        sig_trans = []
         if idx == 0:
             continue
         elif idx < n_trailing:
@@ -84,7 +84,8 @@ def significant_transactions(transactions, n_trailing=10):
         trailing_median = median(trailing_trans)
         if trans.amount > 5*trailing_median:
             sig_trans.append(trans)
-        return sig_trans
+
+    return sig_trans
 
 
 def fraudulent_transactions(transactions):
@@ -114,14 +115,14 @@ def load_transactions(filename):
     Return a list of Transaction objects
     """
     my_transactions = []
-    with open("transactions.txt", 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         split_pattern = re.compile(r"\|")
-        time_pattern = re.compile(r"\d{2}:\d{2}:\d{2}")
+        # time_pattern = re.compile(r"\d{2}:\d{2}:\d{2}")
 
         for line in f.readlines():
             my_list = split_pattern.split(line)
 
-            my_time = time_pattern.findall(line)[0]
+            my_time = my_list[0].strip()  # time_pattern.findall(line)[0]
             my_amount = float("".join([dig for dig in my_list[1]
                                        if (dig.isdigit() or dig == ".")]))
             my_company = my_list[2].strip()
@@ -135,23 +136,23 @@ def load_transactions(filename):
 if __name__ == "__main__":
     transactions = load_transactions("transactions.txt")
 
-    print("Foreign Transactions:")
+    print(f"Foreign Transactions: {len(foreign_transactions(transactions))}")
     print(foreign_transactions(transactions))
     print(" ")
     print(" ")
     print(" ")
-    print("Late Night Transactions:")
-    print(late_night_transactions(transactions))
+    lnt = (late_night_transactions(transactions))
+    print(f"Late Night Transactions: {len(lnt)}")
+    print(lnt[0:15])  # [0:15]
     print(" ")
     print(" ")
     print(" ")
-    print("Highest Transactions:")
+    print(f"Highest Transactions: {len(highest_transactions(transactions))}")
     print(highest_transactions(transactions))
     print(" ")
     print(" ")
     print(" ")
-    print("Median Expense:")
-    print(median_expense(transactions))
+    print(f"Median Expense: {(median_expense(transactions))}")
     print(" ")
     print(" ")
     print(" ")
