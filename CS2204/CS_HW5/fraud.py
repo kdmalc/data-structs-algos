@@ -6,6 +6,7 @@ __author__ = "malcolkd"
 
 from collections import namedtuple
 import re
+from statistics import median
 
 
 def get_phone_numbers(text):
@@ -39,7 +40,8 @@ def foreign_transactions(transactions):
     """Return a list of foreign transactions."""
     # E.g. phone number doesn't start with +1
     return [trans for trans in transactions
-            if not trans.phone[1] == "1"]
+            if not trans.phone[1] == "1"
+            or trans.phone[2].isdigit()]
 
 
 def late_night_transactions(transactions):
@@ -52,13 +54,14 @@ def highest_transactions(transactions, n_highest=10):
     """Return a list of the n highest transactions."""
     high_trans = sorted(transactions, key=lambda x: x.amount, reverse=True)
     # high_trans.sort()
-    high_n_trans = high_trans[1:n_highest]
+    high_n_trans = high_trans[0:n_highest]
     return high_n_trans
 
 
 def median_expense(transactions):
     """Return the median value of transaction amounts."""
-    pass
+    amounts_list = [trans.amount for trans in transactions]
+    return median(amounts_list)
 
 
 def significant_transactions(transactions, n_trailing=10):
@@ -67,7 +70,21 @@ def significant_transactions(transactions, n_trailing=10):
     A transaction is significant if the amount is greater than or equal to
     five times of the median spending for a trailing number of transactions
     """
-    pass
+    for idx, trans in enumerate(transactions):
+        sig_trans = []
+        if idx == 0:
+            continue
+        elif idx < n_trailing:
+            start_idx = 0
+        else:
+            start_idx = idx-n_trailing
+
+        trailing_trans = [trans.amount for trans in
+                          transactions[start_idx:idx]]
+        trailing_median = median(trailing_trans)
+        if trans.amount > 5*trailing_median:
+            sig_trans.append(trans)
+        return sig_trans
 
 
 def fraudulent_transactions(transactions):
@@ -79,7 +96,15 @@ def fraudulent_transactions(transactions):
         - it is among the top 10 highest transactions
         - significant (using 10 trailing transactions)
     """
-    pass
+    ft = foreign_transactions(transactions)
+    lnt = late_night_transactions(transactions)
+    ht = highest_transactions(transactions, n_highest=10)
+    st = significant_transactions(transactions, n_trailing=10)
+    return [trans for trans in transactions
+            if trans in ft
+            and trans in lnt
+            and trans in ht
+            and trans in st]
 
 
 def load_transactions(filename):
@@ -89,17 +114,9 @@ def load_transactions(filename):
     Return a list of Transaction objects
     """
     my_transactions = []
-    with open("transactions_test.txt", 'r') as f:
+    with open("transactions.txt", 'r') as f:
         split_pattern = re.compile(r"\|")
         time_pattern = re.compile(r"\d{2}:\d{2}:\d{2}")
-        phone_pat1 = re.compile(r'\+\d{1}-\d{3}-\d{3}-[^"]+')
-        phone_pat2 = re.compile(r'\+\d{1}-\d{3}-\d{3}-[^"]+')
-        phone_pat3 = re.compile(r'\+\d{2} \d{2} \d{3}-[^"]+')
-        my_phone_patterns = [phone_pat1, phone_pat2, phone_pat3]
-        # OTHER PHONE PATTERNS TO ACCEPT!!!
-        # +1-133-495-8787x11296
-        # +36 24 197-2587
-        # +1-945-634-5202x407
 
         for line in f.readlines():
             my_list = split_pattern.split(line)
@@ -108,29 +125,7 @@ def load_transactions(filename):
             my_amount = float("".join([dig for dig in my_list[1]
                                        if (dig.isdigit() or dig == ".")]))
             my_company = my_list[2].strip()
-
-            my_phone = ""  # "0000"
-            for p_pat in my_phone_patterns:
-                my_phone = my_phone.join(p_pat.findall(line))
-                if len(my_phone.join(p_pat.findall(line))) != 0:
-                    my_phone = my_phone.join(p_pat.findall(line)[0])
-                else:
-                    print(type(my_phone.join(p_pat.findall(line))))
-                """
-                try:
-                    my_phone.join(p_pat.findall(line)[0])
-                except IndexError:
-                    print("INDEX ERROR!")
-                    if ((my_phone.join(p_pat.findall(line))) is not None):
-                        if type(my_phone.join(p_pat.findall(line))) is not int:
-                            print(my_phone.join(p_pat.findall(line)))
-                        elif (len(my_phone.join(p_pat.findall(line)) != 0)):
-                            try:
-                                my_phone.join(p_pat.findall(line))
-                            except IndexError:
-                                print("INDEX ERROR 2!")
-                """
-            print(len(my_phone))
+            my_phone = my_list[3].strip().replace("\n", "")
 
             my_transactions.append(Transaction(
                 my_time, my_amount, my_company, my_phone))
@@ -138,20 +133,32 @@ def load_transactions(filename):
 
 
 if __name__ == "__main__":
-    transactions = load_transactions("transactions_test.txt")
+    transactions = load_transactions("transactions.txt")
 
+    print("Foreign Transactions:")
     print(foreign_transactions(transactions))
     print(" ")
     print(" ")
     print(" ")
+    print("Late Night Transactions:")
     print(late_night_transactions(transactions))
     print(" ")
     print(" ")
     print(" ")
+    print("Highest Transactions:")
     print(highest_transactions(transactions))
     print(" ")
     print(" ")
     print(" ")
-    # print(median_expense(transactions))
-    # print(significant_transactions(transactions))
-    # print(fraudulent_transactions(transactions))
+    print("Median Expense:")
+    print(median_expense(transactions))
+    print(" ")
+    print(" ")
+    print(" ")
+    print("Significant Transactions:")
+    print(significant_transactions(transactions))
+    print(" ")
+    print(" ")
+    print(" ")
+    print("Fraudulent Transactions:")
+    print(fraudulent_transactions(transactions))
