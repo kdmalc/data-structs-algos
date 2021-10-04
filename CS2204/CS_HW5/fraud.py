@@ -9,30 +9,6 @@ import re
 from statistics import median
 
 
-def get_phone_numbers(text):
-    phone_patterns = (
-        re.compile(r"\d{3}-\d{3}-\d{4}"),
-        re.compile(r"\(\d{3}\) \d{3}-\d{4}")
-    )
-    phone_numbers = []
-    for phone_pattern in phone_patterns:
-        phone_numbers += phone_pattern.findall(text)
-    return phone_numbers
-
-
-def get_links(text):
-    pass
-    re.compile(
-        r'<a[^>]+href="([^"]+)'
-        )
-
-
-"""
-2019-07-10 00:53:16 | $18.84 | Mccarty Inc | +1-656-321-9087
-2019-07-10 10:45:35 | $53.19 | Miller, Tyler and Brennan | +1-133-495-8787x1129
-2019-07-11 14:47:00 | $28.88 | Thomas-Ochoa | +1-127-502-6419
-"""
-
 Transaction = namedtuple("Transaction", ["time", "amount", "company", "phone"])
 
 
@@ -117,12 +93,11 @@ def load_transactions(filename):
     my_transactions = []
     with open(filename, 'r', encoding='utf-8') as f:
         split_pattern = re.compile(r"\|")
-        # time_pattern = re.compile(r"\d{2}:\d{2}:\d{2}")
 
         for line in f.readlines():
             my_list = split_pattern.split(line)
 
-            my_time = my_list[0].strip()  # time_pattern.findall(line)[0]
+            my_time = my_list[0].strip()
             my_amount = float("".join([dig for dig in my_list[1]
                                        if (dig.isdigit() or dig == ".")]))
             my_company = my_list[2].strip()
@@ -143,7 +118,7 @@ if __name__ == "__main__":
     print(" ")
     lnt = (late_night_transactions(transactions))
     print(f"Late Night Transactions: {len(lnt)}")
-    print(lnt[0:15])  # [0:15]
+    print(lnt[0:15])
     print(" ")
     print(" ")
     print(" ")
