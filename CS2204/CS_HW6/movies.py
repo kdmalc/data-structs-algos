@@ -7,6 +7,7 @@ __author__ = "malcolkd"
 import json
 from collections import OrderedDict
 import itertools
+from math import sqrt
 
 
 def convert_idents_to_titles(my_idents, movies):
@@ -45,16 +46,20 @@ def unrated_movies(movies, users):
 
     # Use the set difference ("ven diagram") operation
     unrated_movie_identifiers = all_movies_set - my_rated_movie_set
+
+    # Manual approach, not needed anymore
+    """
     unrated_movies_titles = set()
     for ident in unrated_movie_identifiers:
         for movie_list in movies.items():
             if movie_list[0] == ident:
                 unrated_movies_titles.add(movie_list[1]['title'])
+    """
 
     umt_func = convert_idents_to_titles(unrated_movie_identifiers, movies)
-    assert umt_func == unrated_movies_titles
+    # assert umt_func == unrated_movies_titles
 
-    return unrated_movies_titles
+    return umt_func
 
 
 def most_rated_movies(movies, users, n_top=10):
@@ -98,8 +103,6 @@ def highest_rated_movies(movies, users, n_top=10, n_min_ratings=50):
 
     The movie has to have at least n_min_ratings to consider in this ranking.
     """
-    # Average then sort
-    # Return n
 
     # Assemble all the movie ratings under the titles
     movie_ratings_dict = dict()
@@ -133,12 +136,13 @@ def highest_rated_movies(movies, users, n_top=10, n_min_ratings=50):
             sorted_ratings_dict.items(), n_top))
 
     # Now switch from idents to strings
-    highest_ratings_list = []
     highest_rated_titles = convert_idents_to_titles(
         top_rated_dict.keys(), movies)
 
+    highest_ratings_list = []
     for title in highest_rated_titles:
         highest_ratings_list.append(title)
+
     return highest_ratings_list
 
 
@@ -153,25 +157,54 @@ def most_popular_genres(movies, users, n_top=10):
 
     # Get all the genres as a set
     genre_set = set()
+    top_genres = OrderedDict()
     for movie_vals in movies.values():
         for genre in movie_vals['genres']:
             genre_set.add(genre)
+            top_genres.setdefault(genre, 0)
 
     # Break up the movies into their respective genres
-    genre_dict = {genre: [] for genre in genre_set}
+    genre_dict = {genre: dict() for genre in genre_set}
     for movie_tuple in movies.items():
         movie_ident = movie_tuple[0]
+        movie_title = movie_tuple[1]['title']
         movie_genres = movie_tuple[1]['genres']
         for genre in movie_genres:
-            genre_dict[genre].append(movie_ident)
+            genre_dict[genre].setdefault(movie_ident, movie_title)
 
-    # Call the above function on each genre (dictionary)
-    # This is incorrect... doesn't address something...
+    # Assemble all the movie ratings under the titles
+    movie_ratings_dict = dict()
+    for user_val_dict in users.values():
+        for user in user_val_dict.items():
+            movie_ratings_dict.setdefault(user[0], [])
+            movie_ratings_dict[user[0]].append(user[1])
+
     for genre_tuple in genre_dict.items():
+        my_genre = genre_tuple[0]
         genre_movies = genre_tuple[1]
-        highest_rated_movies(genre_movies, users,
-                             n_top=n_top, n_min_ratings=50)
-    pass
+
+        # Get a "sub dictionary"
+        genre_ratings_dict = {key: value for key, value
+                              in movie_ratings_dict.items()
+                              if key in genre_movies.keys()}
+
+        my_ratings = []
+        [my_ratings.extend(val_list) for val_list
+         in genre_ratings_dict.values()]
+
+        top_genres[my_genre] = sum(my_ratings)/len(my_ratings)
+
+    # Sort
+    sorted_ratings_dict = OrderedDict(sorted(
+        top_genres.items(),
+        key=lambda item: item[1],
+        reverse=True))
+
+    # Take the top n
+    top_rated_dict = OrderedDict(
+        itertools.islice(
+            sorted_ratings_dict.items(), n_top))
+    return top_rated_dict.keys()
 
 
 def taste_similarity(user1, user2):
@@ -180,7 +213,29 @@ def taste_similarity(user1, user2):
 
     If a movie is not rated by both users, use 0 for the missing rating.
     """
-    pass
+    user1_movies = list(user1.keys())
+    user2_movies = list(user2.keys())
+    all_movies_set = set(user1_movies + user2_movies)
+
+    # Set operation: intersection
+    shared_movies = set(user1_movies) & set(user2_movies)
+    if len(shared_movies) == 0:
+        return 0
+
+    num = 0
+    denom1 = 0
+    denom2 = 0
+    for movie in all_movies_set:
+        num += (user1.get(movie, 0) * user2.get(movie, 0))
+        denom1 += (user1.get(movie, 0)**2)
+        denom2 += (user2.get(movie, 0)**2)
+    cos_sim = num / (sqrt(denom1) * sqrt(denom2))
+
+    if cos_sim > 1:
+        cos_sim = 1
+    elif cos_sim < 0:
+        cos_sim = 0
+    return cos_sim
 
 
 def suggest_movie(movies, users, new_user):
@@ -193,55 +248,37 @@ def suggest_movie(movies, users, new_user):
     is not rated by the current user, yet. If all movies are rated by new_user,
     return None.
     """
-    pass
+    # Find another user in the database with a similar taste
+    max_user = list(users.values())[0]
+    for meta_user_dict in users.values():
+        # Maybe do max instead of threshold? Instructions unclear
+        if (taste_similarity(meta_user_dict, new_user) >
+                taste_similarity(max_user, new_user)):
+            max_user = meta_user_dict
+    meta_user_dict = max_user
+    # Find the movie rated highest by the meta_user
+    meta_user_movies = set(meta_user_dict.keys())
+    new_user_movies = set(new_user.keys())
+    # Set operation: difference
+    meta_only_movies = meta_user_movies - new_user_movies
+    # Now get the above movies as a subdictionary, then sort
+    meta_only_movies_dict = {key: value for key, value
+                             in meta_user_dict.items()
+                             if key in meta_only_movies}
+    # Sort
+    sorted_ratings_dict = OrderedDict(sorted(
+        meta_only_movies_dict.items(),
+        key=lambda item: item[1],
+        reverse=True))
+    # Take the top movie
+    recommended_movie_dict = OrderedDict(
+        itertools.islice(
+            sorted_ratings_dict.items(), 1))
+
+    title_set = convert_idents_to_titles(recommended_movie_dict.keys(), movies)
+    for x in title_set:
+        return x
 
 
 if __name__ == "__main__":
     movies, users = load_dataset("movies.json")
-    '''
-    print(f"Unrated Movies: {len(unrated_movies(movies, users))} total")
-    print(unrated_movies(movies, users))
-
-    print("")
-    print("")
-    print("")
-
-    print(f"Most Rated Movies: {len(most_rated_movies(movies, users))} total")
-    print(most_rated_movies(movies, users))
-
-    print("")
-    print("")
-    print("")
-
-    print(highest_rated_movies(movies, users))
-
-    print("")
-    print("")
-    print("")
-    '''
-
-    print(most_popular_genres(movies, users))
-
-    # user1 = {
-    #     "tt0076759": 3.0,
-    #     "tt0083658": 3.0,
-    #     "tt0112817": 5.0,
-    #     "tt0128853": 3.0,
-    # }
-    # user2 = {
-    #     "tt0076759": 3.0,
-    #     "tt0083658": 3.0,
-    #     "tt0082971": 1.0
-    # }
-    # print(taste_similarity(user1, user2))
-
-    # new_user = {
-    #     "tt0109831": 4.0,
-    #     "tt0102926": 3.0,
-    #     "tt0108598": 5.0,
-    #     "tt0082971": 5.0,
-    #     "tt0066206": 5.0,
-    #     "tt0120815": 4.0,
-    #     "tt0128853": 3.0,
-    # }
-    # print(suggest_movie(movies, users, new_user))
