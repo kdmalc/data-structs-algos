@@ -47,18 +47,7 @@ def unrated_movies(movies, users):
     # Use the set difference ("ven diagram") operation
     unrated_movie_identifiers = all_movies_set - my_rated_movie_set
 
-    # Manual approach, not needed anymore
-    """
-    unrated_movies_titles = set()
-    for ident in unrated_movie_identifiers:
-        for movie_list in movies.items():
-            if movie_list[0] == ident:
-                unrated_movies_titles.add(movie_list[1]['title'])
-    """
-
     umt_func = convert_idents_to_titles(unrated_movie_identifiers, movies)
-    # assert umt_func == unrated_movies_titles
-
     return umt_func
 
 
