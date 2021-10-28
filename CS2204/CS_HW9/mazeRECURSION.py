@@ -94,35 +94,32 @@ def is_visited(cell, visited):
 def get_unvisited_neighbors(cell, visited):
     '''
     Check all neighbors, then check is they have bene visited yet
-
-    Parameters
-    ----------
-    cell : TYPE
-        DESCRIPTION.
-    visited : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    unvisited_neighbors : List
-        List of unvisited neighbors.
-
     '''
     x, y = cell.x, cell.y
     unvisited_neighbors = []
+
+    # Get all legal neighbors
     if (x == 0):
-        neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1]]
+        if x == y:
+            neighbors = [maze[x+1][y], maze[x][y+1]]
+        else:
+            neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1]]
     elif (x == size_x-1):
-        neighbors = [maze[x][y+1], maze[x][y-1], maze[x-1][y]]
+        if x == y:
+            neighbors = [maze[x-1][y], maze[x][y-1]]
+        else:
+            neighbors = [maze[x][y+1], maze[x][y-1], maze[x-1][y]]
     elif (y == 0):
         neighbors = [maze[x][y+1], maze[x+1][y], maze[x-1][y]]
     elif (y == size_y-1):
         neighbors = [maze[x+1][y], maze[x][y-1], maze[x-1][y]]
     else:
         neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1], maze[x-1][y]]
+
+    # Check to see if neighbors are visited
     for neighbor in neighbors:
         dx, dy = neighbor.x - x, neighbor.y - y
-        if not is_visited(neighbor, visited) and dx < 2 and dy < 2:
+        if (neighbor not in visited) and dx < 2 and dy < 2:
             unvisited_neighbors.append(neighbor)
     return unvisited_neighbors
 
@@ -140,19 +137,13 @@ def choose_cell(unvisited_neighbors):
 def get_direction(cell, new_cell):
     '''
     Get the direction (string) from the current cell to the new cell
-
-    Returns
-    -------
-    my_dir : str
-        N/E/S/W str telling dir
-
     '''
     x, y = cell.x, cell.y
     new_x, new_y = new_cell.x, new_cell.y
     print(f"({x}, {y}) --> ({new_x}, {new_y})")
     dx, dy = new_x - x, new_y - y
     change = (dx, dy)
-    dir_dict = {(0, 1): 'N', (1, 0): 'E', (0, -1): 'S', (-1, 0): 'W'}
+    dir_dict = {(0, -1): 'N', (1, 0): 'E', (0, 1): 'S', (-1, 0): 'W'}
     my_dir = dir_dict.get(change)
     if my_dir is None:
         print("ERROR DIRECTION NOT FOUND")
@@ -255,8 +246,8 @@ def build_maze():
     When the function is invoked all cells have all their four walls standing.
     """
     # Choose a random start point
-    x = randrange(1, size_x)
-    y = randrange(1, size_y)
+    x, y = randrange(1, size_x), randrange(1, size_y)
+    # x, y = 0, 0
     cell = maze[x][y]
     start_coords.append(x)
     start_coords.append(y)
