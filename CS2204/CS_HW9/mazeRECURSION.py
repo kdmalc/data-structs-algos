@@ -27,6 +27,9 @@ class Cell:
         self.S = True
         self.W = True
 
+    def __repr__(self):
+        return f"({self.x}, {self.y})"
+
     def remove_wall(self, direction):
         """
         Remove one wall - keep all neighbors consistent
@@ -75,7 +78,7 @@ class Cell:
 # Global variables for the maze and its size
 size_x = size_y = 32
 maze = [[Cell(x, y) for y in range(size_y)] for x in range(size_x)]
-history_list = []
+backtrack_check = []
 
 
 def is_visited(cell, visited):
@@ -87,48 +90,107 @@ def is_visited(cell, visited):
             return True
     return False
 
-# Choose a random direction to move in
-def choose_dir(cell, visited, x, y):
-    int2dir = {1: 'N', 2: 'E', 3: 'S', 4: 'W'}
-    my_dir_set = set()
 
-    my_dir = randrange(1, 5)
-    my_dir = int2dir[my_dir]
+def get_unvisited_neighbors(maze, cell, visited):
+    print(cell)
+    x, y = cell.x, cell.y
+    unvisited_neighbors = []
+    if (x == 0):
+        neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1]]
+    elif (x == size_x-1):
+        neighbors = [maze[x][y+1], maze[x][y-1], maze[x-1][y]]
+    elif (y == 0):
+        neighbors = [maze[x][y+1], maze[x+1][y], maze[x-1][y]]
+    elif (y == size_y-1):
+        neighbors = [maze[x+1][y], maze[x][y-1], maze[x-1][y]]
+    else:
+        print("ELSE")
+        '''
+        print("--------")
+        print("ELSE")
+        print(x)
+        print(x==0)
+        print(y)
+        print(y==0)
+        print("--------")
+        '''
+        neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1], maze[x-1][y]]
+    for neighbor in neighbors:
+        dx, dy = neighbor.x - x, neighbor.y - y
+        if not is_visited(neighbor, visited) and dx < 2 and dy < 2:
+            unvisited_neighbors.append(neighbor)
+    return unvisited_neighbors
 
-    # If calling this later, can ensure it chooses a new direction
-    while cell.has_wall(my_dir) is False:
-        my_sides = [cell.has_wall('N'), cell.has_wall('E'),
-                    cell.has_wall('S'), cell.has_wall('W')]
-        if 1 not in my_sides:
-            print("NO WALLS LEFT")
-            print(my_sides)
-            return 0
 
-        my_visited1 = [is_visited(maze[x][y+1], visited),
-                      is_visited(maze[x+1][y], visited),
-                      is_visited(maze[x][y-1], visited),
-                      is_visited(maze[x-1][y], visited)]
-        my_visited = [-1 * (ele - 1) for ele in my_visited1]
-        if 1 not in my_visited:
-            print("ALL NEIGHBORS VISITED")
-            print(my_visited)
-            return 0
+def choose_cell(unvisited_neighbors):
+    n = len(unvisited_neighbors)
+    print(n)
+    idx = randrange(1, n)
+    return unvisited_neighbors[idx]
 
-        result = [sum(n) for n in zip(my_sides, my_visited)]
 
-        try:
-            idx = result.index(2) + 1
-        except ValueError:
-            print("Deadend in choose_dir")
-            print(my_sides)
-            print(my_visited)
-            print(len(visited))
-            # There are no cells that are both walled and not visited
-            # DEADEND
-            return 0
-
-        my_dir = int2dir[idx]
+def get_direction(cell, new_cell):
+    x, y = cell.x, cell.y
+    new_x, new_y = new_cell.x, new_cell.y
+    print(f"({x}, {y}) --> ({new_x}, {new_y})")
+    dx, dy = new_x - x, new_y - y
+    change = (dx, dy)
+    dir_dict = {(0, 1): 'N', (1, 0): 'E', (0, -1): 'S', (-1, 0): 'W'}
+    my_dir = dir_dict.get(change)
+    if my_dir is None:
+        print("ERROR DIRECTION NOT FOUND")
+        print(change)
+        my_dir = 'DEADEND'
     return my_dir
+
+
+def backtrack(visited):
+    print("Backtracking")
+    deadcell = visited.pop()
+    prevcell = visited.pop()
+
+    # if backtrack_check.count(deadcell) > 2:
+    if len(backtrack_check) > 2:
+        return 1
+
+    visited.append(prevcell)
+    visited.append(deadcell)
+    maze_recursion(prevcell, visited)
+    backtrack_check.append(deadcell)
+
+
+def maze_recursion(cell, visited):
+    visited.append(cell)
+
+    unvisited_neighbors = get_unvisited_neighbors(maze, cell, visited)
+
+    if len(unvisited_neighbors) == 0:
+        deadend = backtrack(visited)
+        if deadend:
+            print("Backtrack: Got stuck")
+            return
+    elif len(unvisited_neighbors) == 1:
+        new_cell = unvisited_neighbors[0]
+    else:
+        new_cell = choose_cell(unvisited_neighbors)
+
+    if (cell.x == 0 or cell.y == 0) and (new_cell.x == 31 or new_cell.y == 31):
+        print(unvisited_neighbors)
+
+    my_dir = get_direction(cell, new_cell)
+
+    if my_dir == 'DEADEND':
+        return
+
+    try:
+        cell.remove_wall(my_dir)
+    except ValueError:
+        deadend = backtrack(visited)
+        if deadend:
+            print("Backtrack: Got stuck")
+            return
+
+    maze_recursion(new_cell, visited)
 
 
 def build_maze():
@@ -148,40 +210,13 @@ def build_maze():
     # Choose a random start point
     x = randrange(1, size_x)
     y = randrange(1, size_y)
+    cell = maze[x][y]
     print(f"Starting cell is ({x},{y})")
 
     # Implement a stack for backtracking, tracking visited cells
     visited = deque()
 
-    # Loop to continue creating maze
-    while True:
-        my_cell = maze[x][y]
-        visited.append(my_cell)
-        print(f"Num visited cells: {len(visited)}")
-
-        my_dir = choose_dir(my_cell, visited, x, y)
-        if my_dir == 0:
-            print(f"DEADEND: ({x},{y})")
-            return
-
-        my_cell.remove_wall(my_dir)
-
-        # Prevent the maze breaker from trying to go outside the maze
-        if x < 1 or x > size_x or y < 1 or y > size_y:
-            print("Would be outside maze, thus pass")
-            pass
-        else:
-            history_list.append(my_dir)
-            if my_dir == 'N':
-                y += 1
-            elif my_dir == 'E':
-                x += 1
-            elif my_dir == 'S':
-                y -= 1
-            elif my_dir == 'W':
-                x -= 1
-            else:
-                raise "ERROR: THIS SHOULD NOT RUN"
+    maze_recursion(cell, visited)
     return
 
 
