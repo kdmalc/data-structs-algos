@@ -75,24 +75,39 @@ class Cell:
         return getattr(self, direction.upper())
 
 
+###############################################################################
 # Global variables for the maze and its size
 size_x = size_y = 32
 maze = [[Cell(x, y) for y in range(size_y)] for x in range(size_x)]
 backtrack_check = []
+start_coords = []
+dir_list = []
 
 
 def is_visited(cell, visited):
-    if len(visited) == 0:
-        return False
-
-    for i in range(1, len(visited)):
-        if cell == visited[-i]:
-            return True
-    return False
+    '''
+    Check if a given cell is in the visited stack
+    '''
+    return cell in visited
 
 
-def get_unvisited_neighbors(maze, cell, visited):
-    print(cell)
+def get_unvisited_neighbors(cell, visited):
+    '''
+    Check all neighbors, then check is they have bene visited yet
+
+    Parameters
+    ----------
+    cell : TYPE
+        DESCRIPTION.
+    visited : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    unvisited_neighbors : List
+        List of unvisited neighbors.
+
+    '''
     x, y = cell.x, cell.y
     unvisited_neighbors = []
     if (x == 0):
@@ -104,16 +119,6 @@ def get_unvisited_neighbors(maze, cell, visited):
     elif (y == size_y-1):
         neighbors = [maze[x+1][y], maze[x][y-1], maze[x-1][y]]
     else:
-        print("ELSE")
-        '''
-        print("--------")
-        print("ELSE")
-        print(x)
-        print(x==0)
-        print(y)
-        print(y==0)
-        print("--------")
-        '''
         neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1], maze[x-1][y]]
     for neighbor in neighbors:
         dx, dy = neighbor.x - x, neighbor.y - y
@@ -123,13 +128,25 @@ def get_unvisited_neighbors(maze, cell, visited):
 
 
 def choose_cell(unvisited_neighbors):
+    '''
+    Choose a random cell to go to next, coming from the pool
+    of unvisited neighbors
+    '''
     n = len(unvisited_neighbors)
-    print(n)
     idx = randrange(1, n)
     return unvisited_neighbors[idx]
 
 
 def get_direction(cell, new_cell):
+    '''
+    Get the direction (string) from the current cell to the new cell
+
+    Returns
+    -------
+    my_dir : str
+        N/E/S/W str telling dir
+
+    '''
     x, y = cell.x, cell.y
     new_x, new_y = new_cell.x, new_cell.y
     print(f"({x}, {y}) --> ({new_x}, {new_y})")
@@ -139,7 +156,6 @@ def get_direction(cell, new_cell):
     my_dir = dir_dict.get(change)
     if my_dir is None:
         print("ERROR DIRECTION NOT FOUND")
-        print(change)
         my_dir = 'DEADEND'
     return my_dir
 
@@ -148,27 +164,50 @@ def backtrack(visited):
     print("Backtracking")
     deadcell = visited.pop()
     prevcell = visited.pop()
+    cell_list = [deadcell, prevcell]
 
-    # if backtrack_check.count(deadcell) > 2:
-    if len(backtrack_check) > 2:
+    # Backtrack until we get to a cell that has at least 1 unvisited neighbor
+    while len(get_unvisited_neighbors(prevcell, visited)) < 2:
+        prevcell = visited.pop()
+        cell_list.append(prevcell)
+
+    # Once we find an unvisited neighbor, rebuild visited stack
+    for cell in cell_list:
+        visited.append(cell)
+
+    if deadcell in backtrack_check:
         return 1
-
-    visited.append(prevcell)
-    visited.append(deadcell)
-    maze_recursion(prevcell, visited)
     backtrack_check.append(deadcell)
+
+    neighbors = get_unvisited_neighbors(prevcell, visited)
+    print(deadcell in visited)
+    print(neighbors[0] in visited)
+    if len(neighbors) == 0:
+        print("ERROR THIS IS NEVER SUPPOSED TO RUN")
+        return 1
+    elif (neighbors[0].x == start_coords[0] and
+          neighbors[0].y == start_coords[1]):
+        # We are at the starting cell, backtracked all the way
+        print("Backtracked to start")
+        return 1
+    else:
+        return prevcell
 
 
 def maze_recursion(cell, visited):
     visited.append(cell)
 
-    unvisited_neighbors = get_unvisited_neighbors(maze, cell, visited)
+    unvisited_neighbors = get_unvisited_neighbors(cell, visited)
 
-    if len(unvisited_neighbors) == 0:
+    if len(visited) == (size_x * size_y):
+        return
+    elif len(unvisited_neighbors) == 0:
         deadend = backtrack(visited)
         if deadend:
-            print("Backtrack: Got stuck")
+            print("Backtrack ELIF")
             return
+        else:
+            new_cell = deadend
     elif len(unvisited_neighbors) == 1:
         new_cell = unvisited_neighbors[0]
     else:
@@ -178,17 +217,25 @@ def maze_recursion(cell, visited):
         print(unvisited_neighbors)
 
     my_dir = get_direction(cell, new_cell)
+    dir_list.append(my_dir)
 
     if my_dir == 'DEADEND':
-        return
+        deadend = backtrack(visited)
+        if deadend:
+            print("Backtrack ELIF")
+            return
+        else:
+            new_cell = deadend
 
     try:
         cell.remove_wall(my_dir)
     except ValueError:
         deadend = backtrack(visited)
-        if deadend:
-            print("Backtrack: Got stuck")
+        if deadend == 1:
+            print("Backtrack TRY")
             return
+        else:
+            new_cell = deadend
 
     maze_recursion(new_cell, visited)
 
@@ -211,6 +258,8 @@ def build_maze():
     x = randrange(1, size_x)
     y = randrange(1, size_y)
     cell = maze[x][y]
+    start_coords.append(x)
+    start_coords.append(y)
     print(f"Starting cell is ({x},{y})")
 
     # Implement a stack for backtracking, tracking visited cells
