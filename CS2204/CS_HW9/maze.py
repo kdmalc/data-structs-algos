@@ -27,6 +27,9 @@ class Cell:
         self.S = True
         self.W = True
 
+    def __repr__(self):
+        return f"({self.x}, {self.y})"
+
     def remove_wall(self, direction):
         """
         Remove one wall - keep all neighbors consistent
@@ -72,63 +75,215 @@ class Cell:
         return getattr(self, direction.upper())
 
 
+###############################################################################
 # Global variables for the maze and its size
 size_x = size_y = 32
 maze = [[Cell(x, y) for y in range(size_y)] for x in range(size_x)]
-history_list = []
+backtrack_check = []
+start_coords = []
+dir_list = []
+back_dir = []
 
 
 def is_visited(cell, visited):
-    if len(visited) == 0:
-        return False
+    '''
+    Check if a given cell is in the visited stack
+    '''
+    return cell in visited
 
-    for i in range(1, len(visited)):
-        if cell == visited[-i]:
-            return True
-    return False
 
-# Choose a random direction to move in
-def choose_dir(cell, visited, x, y):
-    int2dir = {1: 'N', 2: 'E', 3: 'S', 4: 'W'}
-    my_dir_set = set()
+def get_unvisited_neighbors(cell, visited):
+    '''
+    Check all neighbors, then check is they have bene visited yet
+    '''
+    x, y = cell.x, cell.y
+    unvisited_neighbors = []
 
-    my_dir = randrange(1, 5)
-    my_dir = int2dir[my_dir]
+    # Get all legal neighbors
+    if (x == 0):
+        if x == y:
+            neighbors = [maze[x+1][y], maze[x][y+1]]
+        elif (y == size_y-1):
+            neighbors = [maze[x+1][y], maze[x][y-1]]
+        else:
+            neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1]]
+    elif (x == size_x-1):
+        if x == y:
+            neighbors = [maze[x-1][y], maze[x][y-1]]
+        elif y == 0:
+            neighbors = [maze[x-1][y], maze[x][y+1]]
+        else:
+            neighbors = [maze[x][y+1], maze[x][y-1], maze[x-1][y]]
+    elif (y == 0):
+        neighbors = [maze[x][y+1], maze[x+1][y], maze[x-1][y]]
+    elif (y == size_y-1):
+        neighbors = [maze[x+1][y], maze[x][y-1], maze[x-1][y]]
+    else:
+        neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1], maze[x-1][y]]
 
-    # If calling this later, can ensure it chooses a new direction
-    while cell.has_wall(my_dir) is False:
-        my_sides = [cell.has_wall('N'), cell.has_wall('E'),
-                    cell.has_wall('S'), cell.has_wall('W')]
-        if 1 not in my_sides:
-            print("NO WALLS LEFT")
-            print(my_sides)
-            return 0
+    # Check to see if neighbors are visited
+    for neighbor in neighbors:
+        dx, dy = neighbor.x - x, neighbor.y - y
+        if (neighbor not in visited) and dx < 2 and dy < 2:
+            unvisited_neighbors.append(neighbor)
+    return unvisited_neighbors
 
-        my_visited1 = [is_visited(maze[x][y+1], visited),
-                      is_visited(maze[x+1][y], visited),
-                      is_visited(maze[x][y-1], visited),
-                      is_visited(maze[x-1][y], visited)]
-        my_visited = [-1 * (ele - 1) for ele in my_visited1]
-        if 1 not in my_visited:
-            print("ALL NEIGHBORS VISITED")
-            print(my_visited)
-            return 0
 
-        result = [sum(n) for n in zip(my_sides, my_visited)]
+def choose_cell(unvisited_neighbors):
+    '''
+    Choose a random cell to go to next, coming from the pool
+    of unvisited neighbors
+    '''
+    n = len(unvisited_neighbors)
+    idx = randrange(1, n)
+    return unvisited_neighbors[idx]
 
-        try:
-            idx = result.index(2) + 1
-        except ValueError:
-            print("Deadend in choose_dir")
-            print(my_sides)
-            print(my_visited)
-            print(len(visited))
-            # There are no cells that are both walled and not visited
-            # DEADEND
-            return 0
 
-        my_dir = int2dir[idx]
+def get_direction(cell, new_cell):
+    '''
+    Get the direction (string) from the current cell to the new cell
+    '''
+    x, y = cell.x, cell.y
+    new_x, new_y = new_cell.x, new_cell.y
+    print(f"({x}, {y}) --> ({new_x}, {new_y})")
+    dx, dy = new_x - x, new_y - y
+    change = (dx, dy)
+    dir_dict = {(0, -1): 'N', (1, 0): 'E', (0, 1): 'S', (-1, 0): 'W'}
+    my_dir = dir_dict.get(change)
+    if my_dir is None:
+        print("Pulling from back_dir")
+        my_dir = back_dir[-1]
+        if my_dir is None:
+            print("ERROR DIRECTION NOT FOUND")
+            print(f"Change: {change}")
+            print(f"{x}, {y}, {new_x}, {new_y}")
+            my_dir = 'DEADEND'
     return my_dir
+
+
+def get_cell_before(my_cell, visited):
+    prevcell = 0
+    for cell in visited:
+        if cell == my_cell:
+            return prevcell
+        prevcell = cell
+
+
+def backtrack(visited):
+    print("Backtracking")
+    deadcell = visited.pop()
+    prevcell = visited.pop()
+    cell_list = [deadcell, prevcell]
+    popped_dir_list = [dir_list[-1], dir_list[-2]]
+    subdir_list = dir_list[0:len(dir_list)-3]
+
+    visited.append(deadcell)
+    if len(backtrack_check) > 1 and deadcell == backtrack_check[-2]:
+        # We are stuck in a loop
+        print("---")
+        print("---")
+        print("---")
+        print("Backtracked in loop?")
+        print(f"Deadcell: {deadcell}")
+        print(f"Previous cell: {prevcell}")
+        print(f"Last backtrack: {backtrack_check[-1]}")
+        print(f"2nd backtrack: {backtrack_check[-2]}")
+        print(f"3rd backtrack: {backtrack_check[-3]}")
+        hold = list(visited)
+        print("Last 5 visited cells:")
+        print(hold[-5:-1])
+        print("---")
+        print("---")
+        print("---")
+        return 1
+
+    # Backtrack until we get to a cell that has at least 1 unvisited neighbor
+    while len(get_unvisited_neighbors(prevcell, visited)) < 2:
+        prevcell = visited.pop()
+        cell_list.append(prevcell)
+        my_dir = subdir_list[-1]
+        subdir_list = subdir_list[0:len(subdir_list)-2]
+        popped_dir_list.append(my_dir)
+
+    neighbors = get_unvisited_neighbors(prevcell, visited)
+    neighbors = [ne for ne in neighbors if ne is not deadcell]
+
+    # Once we find an unvisited neighbor, rebuild visited stack
+    for cell in cell_list:
+        if cell not in visited:
+            visited.append(cell)
+
+    backtrack_check.append(deadcell)
+
+    if len(neighbors) == 0:
+        print("ERROR THIS IS NEVER SUPPOSED TO RUN")
+        return 1
+    elif (neighbors[0].x == start_coords[0] and
+          neighbors[0].y == start_coords[1]):
+        # We are at the starting cell, backtracked all the way
+        # Pretty sure this should also never run (should get caught above)
+        print("Backtracked to start")
+        return 1
+    else:
+        # Failed fix
+        # return get_cell_before(prevcell, visited)
+
+        # Results in a not perfect maze
+        # back_dir.append(my_dir)
+        back_dir.append(subdir_list[-1])
+        return prevcell
+
+
+def maze_recursion(cell, visited):
+    if cell not in visited:
+        visited.append(cell)
+
+    unvisited_neighbors = get_unvisited_neighbors(cell, visited)
+
+    if len(visited) == (size_x * size_y):
+        '''
+        for cell in maze:
+            if cell not in visited:
+                print("NO")
+        '''
+
+        print("SUCCESS: Visited all cells")
+        return
+    elif len(unvisited_neighbors) == 0:
+        deadend = backtrack(visited)
+        if deadend == 1:
+            print("Backtrack ELIF1")
+            return
+        else:
+            new_cell = deadend
+    elif len(unvisited_neighbors) == 1:
+        new_cell = unvisited_neighbors[0]
+    else:
+        new_cell = choose_cell(unvisited_neighbors)
+
+    my_dir = get_direction(cell, new_cell)
+
+    if my_dir == 'DEADEND':
+        deadend = backtrack(visited)
+        if deadend == 1:
+            print("Backtrack ELIF2")
+            return
+        else:
+            new_cell = deadend
+
+    dir_list.append(my_dir)
+
+    try:
+        cell.remove_wall(my_dir)
+    except ValueError:
+        deadend = backtrack(visited)
+        if deadend == 1:
+            print("Backtrack TRY")
+            return
+        else:
+            new_cell = deadend
+
+    maze_recursion(new_cell, visited)
 
 
 def build_maze():
@@ -146,43 +301,81 @@ def build_maze():
     When the function is invoked all cells have all their four walls standing.
     """
     # Choose a random start point
-    x = randrange(1, size_x)
-    y = randrange(1, size_y)
+    x, y = randrange(1, size_x), randrange(1, size_y)
+    # x, y = 0, 0
+    cell = maze[x][y]
+    start_coords.append(x)
+    start_coords.append(y)
     print(f"Starting cell is ({x},{y})")
 
     # Implement a stack for backtracking, tracking visited cells
     visited = deque()
 
-    # Loop to continue creating maze
-    while True:
-        my_cell = maze[x][y]
-        visited.append(my_cell)
-        print(f"Num visited cells: {len(visited)}")
-
-        my_dir = choose_dir(my_cell, visited, x, y)
-        if my_dir == 0:
-            print(f"DEADEND: ({x},{y})")
-            return
-
-        my_cell.remove_wall(my_dir)
-
-        # Prevent the maze breaker from trying to go outside the maze
-        if x < 1 or x > size_x or y < 1 or y > size_y:
-            print("Would be outside maze, thus pass")
-            pass
-        else:
-            history_list.append(my_dir)
-            if my_dir == 'N':
-                y += 1
-            elif my_dir == 'E':
-                x += 1
-            elif my_dir == 'S':
-                y -= 1
-            elif my_dir == 'W':
-                x -= 1
-            else:
-                raise "ERROR: THIS SHOULD NOT RUN"
+    maze_recursion(cell, visited)
     return
+
+
+###############################################################################
+
+
+def make_branch(choice_start, my_directions, visited_find, start, end):
+    '''
+    When we have multiple options of which way to go, this will choose and
+    also remember what the cell was that the options appeared at.
+    It explores in a DFS manner.  it will come back to choice_start if
+    the final cell is not the end
+    '''
+    # Inits
+    int2dir = {1: 'N', 2: 'E', 3: 'S', 4: 'W'}
+    int2dz = {1: (0, -1), 2: (1, 0), 3: (0, 1), 4: (-1, 0)}
+    cell_possible = []
+
+    for idx in range(1, len(my_directions)):
+        my_dir_int = my_directions[idx]
+        my_dir = int2dir[my_dir_int]
+        my_dz = int2dz[my_dir_int]
+
+        new_cell = maze[choice_start.x + my_dz[0]][choice_start.y + my_dz[1]]
+        # "Recurse"
+        visited_find.append(new_cell)
+        cell_possible.append(new_cell)
+
+    for cell in cell_possible:
+        find_recursion(cell, visited_find, start, end)
+    print("BRANCH FAIL")
+
+
+def find_recursion(cell, visited_find, start, end):
+    # Base case
+    if cell.x == end[0] and cell.y == end[1]:
+        print("GREAT SUCCESS")
+        return
+
+    # Inits
+    int2dir = {1: 'N', 2: 'E', 3: 'S', 4: 'W'}
+    int2dz = {1: (0, -1), 2: (1, 0), 3: (0, 1), 4: (-1, 0)}
+    my_directions = []
+
+    my_dirs = [cell.has_walls(my_dir) for my_dir in ['N', 'E', 'S', 'W']]
+    for idx, val in enumerate(my_dirs):
+        if val is False:
+            my_directions.append(idx)
+
+    n = len(my_directions)
+    if n > 1:
+        make_branch(cell, my_directions, visited_find, start, end)
+    else:
+        idx = 0
+        my_dir_int = my_directions[idx]
+        my_dir = int2dir[my_dir_int]
+        my_dz = int2dz[my_dir_int]
+
+    # Move in the chosen direction
+    new_cell = maze[cell.x + my_dz[0]][cell.y + my_dz[1]]
+    # "Recurse"
+    visited_find.append(new_cell)
+    find_recursion(new_cell, visited_find)
+    pass
 
 
 def find_path(start, end):
@@ -205,6 +398,15 @@ def find_path(start, end):
     which list the cell coordinates on a valid path from start to end.
     E.g.: [(0, 0), (0, 1), (1, 1), (2, 1), (3, 1), ..., (7, 13)]
     """
+
+    cell = maze[start[0]][start[1]]
+    print(f"Starting cell is ({start[0]},{start[1]})")
+
+    # Implement a stack for backtracking, tracking visited cells
+    visited_find = deque()
+    visited_find.append(cell)
+
+    find_recursion(cell, visited_find, start, end)
     pass
 
 
