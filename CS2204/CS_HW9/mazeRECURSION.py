@@ -102,11 +102,15 @@ def get_unvisited_neighbors(cell, visited):
     if (x == 0):
         if x == y:
             neighbors = [maze[x+1][y], maze[x][y+1]]
+        elif (y == size_y-1):
+            neighbors = [maze[x+1][y], maze[x][y-1]]
         else:
             neighbors = [maze[x][y+1], maze[x+1][y], maze[x][y-1]]
     elif (x == size_x-1):
         if x == y:
             neighbors = [maze[x-1][y], maze[x][y-1]]
+        elif y == 0:
+            neighbors = [maze[x-1][y], maze[x][y+1]]
         else:
             neighbors = [maze[x][y+1], maze[x][y-1], maze[x-1][y]]
     elif (y == 0):
@@ -162,20 +166,23 @@ def backtrack(visited):
         prevcell = visited.pop()
         cell_list.append(prevcell)
 
+    neighbors = get_unvisited_neighbors(prevcell, visited)
+    neighbors = [ne for ne in neighbors if ne is not deadcell]
+
     # Once we find an unvisited neighbor, rebuild visited stack
     for cell in cell_list:
         visited.append(cell)
 
-    if deadcell in backtrack_check:
-        return 1
+    # If you get stuck at the same deadcell twice then the algo is broken
+    # if deadcell in backtrack_check:
+    #    print("Your deadcell is already in backtrack_check")
+    #    return 1
     backtrack_check.append(deadcell)
 
-    neighbors = get_unvisited_neighbors(prevcell, visited)
-    print(deadcell in visited)
-    print(neighbors[0] in visited)
     if len(neighbors) == 0:
         print("ERROR THIS IS NEVER SUPPOSED TO RUN")
         return 1
+        # return backtrack(visited)
     elif (neighbors[0].x == start_coords[0] and
           neighbors[0].y == start_coords[1]):
         # We are at the starting cell, backtracked all the way
@@ -191,11 +198,18 @@ def maze_recursion(cell, visited):
     unvisited_neighbors = get_unvisited_neighbors(cell, visited)
 
     if len(visited) == (size_x * size_y):
+        '''
+        for cell in maze:
+            if cell not in visited:
+                print("NOPE")
+        '''
+
+        print("SUCCESS: Visited all cells")
         return
     elif len(unvisited_neighbors) == 0:
         deadend = backtrack(visited)
-        if deadend:
-            print("Backtrack ELIF")
+        if deadend == 1:
+            print("Backtrack ELIF1")
             return
         else:
             new_cell = deadend
@@ -204,19 +218,17 @@ def maze_recursion(cell, visited):
     else:
         new_cell = choose_cell(unvisited_neighbors)
 
-    if (cell.x == 0 or cell.y == 0) and (new_cell.x == 31 or new_cell.y == 31):
-        print(unvisited_neighbors)
-
     my_dir = get_direction(cell, new_cell)
-    dir_list.append(my_dir)
 
     if my_dir == 'DEADEND':
         deadend = backtrack(visited)
-        if deadend:
-            print("Backtrack ELIF")
+        if deadend == 1:
+            print("Backtrack ELIF2")
             return
         else:
             new_cell = deadend
+
+    dir_list.append(my_dir)
 
     try:
         cell.remove_wall(my_dir)
