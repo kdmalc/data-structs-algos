@@ -145,7 +145,7 @@ def get_direction(cell, new_cell):
     '''
     x, y = cell.x, cell.y
     new_x, new_y = new_cell.x, new_cell.y
-    print(f"({x}, {y}) --> ({new_x}, {new_y})")
+    # print(f"({x}, {y}) --> ({new_x}, {new_y})")
     dx, dy = new_x - x, new_y - y
     change = (dx, dy)
     dir_dict = {(0, -1): 'N', (1, 0): 'E', (0, 1): 'S', (-1, 0): 'W'}
@@ -170,42 +170,36 @@ def get_cell_before(my_cell, visited):
 
 
 def backtrack(visited):
-    print("Backtracking")
+    print(f"Backtracking: len(visited): {len(visited)}")
+    my_dir = dir_list[-2]
+    all_visited = list(visited)
     deadcell = visited.pop()
     prevcell = visited.pop()
     cell_list = [deadcell, prevcell]
     popped_dir_list = [dir_list[-1], dir_list[-2]]
     subdir_list = dir_list[0:len(dir_list)-3]
 
-    visited.append(deadcell)
-    if len(backtrack_check) > 1 and deadcell == backtrack_check[-2]:
-        # We are stuck in a loop
-        print("---")
-        print("---")
-        print("---")
-        print("Backtracked in loop?")
-        print(f"Deadcell: {deadcell}")
-        print(f"Previous cell: {prevcell}")
-        print(f"Last backtrack: {backtrack_check[-1]}")
-        print(f"2nd backtrack: {backtrack_check[-2]}")
-        print(f"3rd backtrack: {backtrack_check[-3]}")
-        hold = list(visited)
-        print("Last 5 visited cells:")
-        print(hold[-5:-1])
-        print("---")
-        print("---")
-        print("---")
+    if len(visited) < 1:
+        print('WHY IS VISITED EMPTY')
         return 1
 
     # Backtrack until we get to a cell that has at least 1 unvisited neighbor
-    while len(get_unvisited_neighbors(prevcell, visited)) < 2:
-        prevcell = visited.pop()
+    while (len(get_unvisited_neighbors(prevcell, all_visited)) < 2):
+        try:
+            prevcell = visited.pop()
+        except IndexError:
+            print("INDEX ERROR")
+            print(len(visited))
+            raise IndexError(f"FAIL IN BACKTRACK: len(v) = {len(visited)}, len(a_v) = {len(all_visited)}, num bt's = {len(back_dir)}")
         cell_list.append(prevcell)
-        my_dir = subdir_list[-1]
+        if len(subdir_list) == 0:
+            my_dir = dir_list[-2]
+        else:
+            my_dir = subdir_list[-1]
         subdir_list = subdir_list[0:len(subdir_list)-2]
         popped_dir_list.append(my_dir)
 
-    neighbors = get_unvisited_neighbors(prevcell, visited)
+    neighbors = get_unvisited_neighbors(prevcell, all_visited)
     neighbors = [ne for ne in neighbors if ne is not deadcell]
 
     # Once we find an unvisited neighbor, rebuild visited stack
@@ -229,8 +223,8 @@ def backtrack(visited):
         # return get_cell_before(prevcell, visited)
 
         # Results in a not perfect maze
-        # back_dir.append(my_dir)
-        back_dir.append(subdir_list[-1])
+        back_dir.append(my_dir)
+        # back_dir.append(subdir_list[-1])
         return prevcell
 
 
