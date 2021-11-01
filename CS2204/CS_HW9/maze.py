@@ -82,7 +82,7 @@ maze = [[Cell(x, y) for y in range(size_y)] for x in range(size_x)]
 backtrack_check = []
 start_coords = []
 dir_list = []
-back_dir = []
+backtrack_used = 0
 
 
 def is_visited(cell, visited):
@@ -145,17 +145,28 @@ def get_direction(cell, new_cell):
     '''
     x, y = cell.x, cell.y
     new_x, new_y = new_cell.x, new_cell.y
-    # print(f"({x}, {y}) --> ({new_x}, {new_y})")
+    print(f"({x}, {y}) --> ({new_x}, {new_y})")
     dx, dy = new_x - x, new_y - y
     change = (dx, dy)
     dir_dict = {(0, -1): 'N', (1, 0): 'E', (0, 1): 'S', (-1, 0): 'W'}
     my_dir = dir_dict.get(change)
     if my_dir is None:
-        my_dir = back_dir[-1]
         if my_dir is None:
+            '''
+            This error occurs because when you backtrack, I cant get it to
+            save the correct base cell.  E.g. when you backtrack you
+            should backtrack back to the CELL AT WHICH YOU MADE THE CHOICE TO
+            SPLIT as presumably there was another valid branch you couldve
+            taken.  However, this is not working because it apparently thinks
+            that you get to choose almost every single time, but also thinks
+            that once you go back to that base cell, you dont have any options
+            and need to keep back tracking.  So instead of getting small
+            changes like (0,1) or (0,-1) etc etc you are getting huge changes
+            which of course it is not possible to find a single direction for
+            '''
             print("ERROR DIRECTION NOT FOUND")
             print(f"Change: {change}")
-            print(f"{x}, {y}, {new_x}, {new_y}")
+            print(f"Prevcell, newcell: {x}, {y}, {new_x}, {new_y}")
             my_dir = 'DEADEND'
     return my_dir
 
@@ -168,7 +179,7 @@ def get_cell_before(my_cell, visited):
         prevcell = cell
 
 
-def backtrack(visited):
+def backtrack(visited, base_cell):
     my_dir = dir_list[-2]
     all_visited = list(visited)
     deadcell = visited.pop()
@@ -177,17 +188,23 @@ def backtrack(visited):
     popped_dir_list = [dir_list[-1], dir_list[-2]]
     subdir_list = dir_list[0:len(dir_list)-3]
 
+    if backtrack_check.count(deadcell) > 3:
+        print("YOU ARE STUCK IN A LOOP")
+        return 1, 1
+
     # Backtrack until we get to a cell that has at least 1 unvisited neighbor
     while (len(get_unvisited_neighbors(prevcell, all_visited)) < 2):
         if len(visited) < 1:
             # At this state, the maze has a few still open cells
             print('VIS SHOULD NOT BE EMPTY')
-            return 1
+            return 1, 1
         # This leads to breaking if you replace the above with the below...
         try:
             prevcell = visited.pop()
         except IndexError:
-            raise IndexError(f"FAIL IN BACKTRACK: len(v) = {len(visited)}, len(a_v) = {len(all_visited)}, num bt's = {len(back_dir)}")
+            raise IndexError("RIP")
+            # raise IndexError(f"FAIL IN BACKTRACK: len(v) = {len(visited)},
+            # len(a_v) = {len(all_visited)}, num bt's = {len(back_dir)}")
         cell_list.append(prevcell)
         if len(subdir_list) == 0:
             my_dir = dir_list[-2]
@@ -208,34 +225,23 @@ def backtrack(visited):
 
     if len(neighbors) == 0:
         print("ERROR THIS IS NEVER SUPPOSED TO RUN")
-        return 1
+        return 1, 1
     else:
-        # Failed fix
-        # return get_cell_before(prevcell, visited)
-
-        # Results in a not perfect maze
-        back_dir.append(my_dir)
-        # back_dir.append(subdir_list[-1])
-        return prevcell
+        return prevcell, base_cell
 
 
-def maze_recursion(cell, visited):
+def maze_recursion(cell, visited, backtrack_used, base_cell):
     if cell not in visited:
         visited.append(cell)
 
     unvisited_neighbors = get_unvisited_neighbors(cell, visited)
 
     if len(visited) == (size_x * size_y):
-        '''
-        for cell in maze:
-            if cell not in visited:
-                print("NO")
-        '''
-
         print("SUCCESS: Visited all cells")
         return
     elif len(unvisited_neighbors) == 0:
-        deadend = backtrack(visited)
+        backtrack_used = 1
+        deadend, base_cell = backtrack(visited, base_cell)
         if deadend == 1:
             print("Backtrack ELIF1")
             print(cell)
@@ -245,12 +251,19 @@ def maze_recursion(cell, visited):
     elif len(unvisited_neighbors) == 1:
         new_cell = unvisited_neighbors[0]
     else:
+        base_cell.append(cell)
         new_cell = choose_cell(unvisited_neighbors)
 
-    my_dir = get_direction(cell, new_cell)
+    if backtrack_used == 1:
+        bc = base_cell.pop()
+        my_dir = get_direction(bc, new_cell)
+        backtrack_used = 0
+    else:
+        my_dir = get_direction(cell, new_cell)
 
     if my_dir == 'DEADEND':
-        deadend = backtrack(visited)
+        backtrack_used = 1
+        deadend, base_cell = backtrack(visited, base_cell)
         if deadend == 1:
             print("Backtrack ELIF2")
             print(cell)
@@ -263,7 +276,8 @@ def maze_recursion(cell, visited):
     try:
         cell.remove_wall(my_dir)
     except ValueError:
-        deadend = backtrack(visited)
+        backtrack_used = 1
+        deadend, base_cell = backtrack(visited, base_cell)
         if deadend == 1:
             print("Backtrack TRY")
             print(cell)
@@ -271,7 +285,7 @@ def maze_recursion(cell, visited):
         else:
             new_cell = deadend
 
-    maze_recursion(new_cell, visited)
+    maze_recursion(new_cell, visited, backtrack_used, base_cell)
 
 
 def build_maze():
@@ -290,7 +304,6 @@ def build_maze():
     """
     # Choose a random start point
     x, y = randrange(1, size_x), randrange(1, size_y)
-    # x, y = 0, 0
     cell = maze[x][y]
     start_coords.append(x)
     start_coords.append(y)
@@ -298,15 +311,37 @@ def build_maze():
 
     # Implement a stack for backtracking, tracking visited cells
     visited = deque()
+    # Implement a stack for keeping track of branching points
+    base_cell = deque()
 
-    maze_recursion(cell, visited)
+    maze_recursion(cell, visited, 0, base_cell)
     return
 
 
 ###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 
-def make_branch(choice_start, my_directions, visited_find, start, end):
+'''
+Explanation of how I would do this if:
+1) the above part was working and
+2) I had more time
+
+DFS can be accomplished in a maze by taking the starting point, checking
+if it is at a branch point (e.g. can it move in 2 directions or 1), assuming
+it is at a branch point, then storing that cell (say, to a stack), choosing
+a direction at random to follow, and following it until you either a) reach
+a deadend, b) reach the desired end point, or c), the most likely, hit another
+branch point, at which you would just repeat the above.  It should pretty
+straightforward as a recursive function but it's 11:52 and I couldnt get the
+above to work so I wasnt able to write it out
+'''
+
+
+def make_branch(choice_start, my_directions, path, start, end):
     '''
     When we have multiple options of which way to go, this will choose and
     also remember what the cell was that the options appeared at.
@@ -317,50 +352,44 @@ def make_branch(choice_start, my_directions, visited_find, start, end):
     int2dz = {1: (0, -1), 2: (1, 0), 3: (0, 1), 4: (-1, 0)}
     cell_possible = []
 
-    for idx in range(1, len(my_directions)):
+    for idx in range(0, len(my_directions)):
         my_dir_int = my_directions[idx]
         my_dz = int2dz[my_dir_int]
 
         new_cell = maze[choice_start.x + my_dz[0]][choice_start.y + my_dz[1]]
         # "Recurse"
-        visited_find.append(new_cell)
+        path.append(new_cell)
         cell_possible.append(new_cell)
 
     for cell in cell_possible:
-        find_recursion(cell, visited_find, start, end)
+        find_recursion(cell, path, start, end)
     print("BRANCH FAIL")
 
 
-def find_recursion(cell, visited_find, start, end):
+def find_recursion(cell, path, start, end):
     # Base case
     if cell.x == end[0] and cell.y == end[1]:
         print("GREAT SUCCESS")
-        return
+        return list(path)
 
     # Inits
-    int2dir = {1: 'N', 2: 'E', 3: 'S', 4: 'W'}
-    int2dz = {1: (0, -1), 2: (1, 0), 3: (0, 1), 4: (-1, 0)}
     my_directions = []
 
-    my_dirs = [cell.has_walls(my_dir) for my_dir in ['N', 'E', 'S', 'W']]
+    my_dirs = [cell.has_wall(my_dir) for my_dir in ['N', 'E', 'S', 'W']]
     for idx, val in enumerate(my_dirs):
         if val is False:
             my_directions.append(idx)
-
-    n = len(my_directions)
-    if n > 1:
-        make_branch(cell, my_directions, visited_find, start, end)
-    else:
-        idx = 0
-        my_dir_int = my_directions[idx]
-        my_dir = int2dir[my_dir_int]
-        my_dz = int2dz[my_dir_int]
+    dirs2moves = {0: (0, -1), 1: (1, 0), 2: (0, 1), 3: (-1, 0)}
 
     # Move in the chosen direction
-    new_cell = maze[cell.x + my_dz[0]][cell.y + my_dz[1]]
+    # Didn't have time to define dz, it would just be the direction you want to
+    # move in, e.g dz = (0,1) based on the above chosen direction
+    # new_cell = maze[cell.x + my_dz[0]][cell.y + my_dz[1]]
+    new_cell = cell
+
     # "Recurse"
-    visited_find.append(new_cell)
-    find_recursion(new_cell, visited_find)
+    path.append(new_cell)
+    find_recursion(new_cell, path, start, end)
     pass
 
 
