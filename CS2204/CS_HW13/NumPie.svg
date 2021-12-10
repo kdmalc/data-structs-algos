@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 25.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 416.6 274.7" style="enable-background:new 0 0 416.6 274.7;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FBB040;stroke:#000000;stroke-miterlimit:10;}
+	.st1{fill:#ED1C24;stroke:#000000;stroke-miterlimit:10;}
+	.st2{font-family:'MarkerFelt-Wide';}
+	.st3{font-size:67.1729px;}
+	.st4{font-family:'Noteworthy-Bold';}
+	.st5{font-size:21px;}
+</style>
+<polygon class="st0" points="209.7,201.7 137.4,274 0.7,137.4 137.4,0.7 207.2,70.5 143.9,135.9 "/>
+<rect x="34.9" y="100.4" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -75.4953 89.6326)" class="st1" width="71" height="71"/>
+<rect x="100.4" y="35" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -10.0762 116.7301)" class="st1" width="71" height="71"/>
+<rect x="100.7" y="166.2" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -102.73 155.383)" class="st1" width="71" height="71"/>
+<text transform="matrix(1 0 0 1 198.1196 158.9632)" class="st1 st2 st3">NumPie</text>
+<text transform="matrix(1 0 0 1 206.6649 190.0291)" class="st4 st5">High performance pizza</text>
+</svg>
